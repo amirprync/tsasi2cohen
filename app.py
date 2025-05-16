@@ -14,54 +14,48 @@ def process_line(line, date_str, counter):
         if not line.startswith('1'):
             return None
         
-        # Split por comillas
         fields = line.split("'")
+        record_type = fields[1] + fields[2]
         
-        # Extraer tipo de registro
-        record_type = fields[1] + fields[2]  # D'E o I'E
-        
-        # Obtener campos
         original_code = fields[3]
-        account_number = clean_number(fields[4])  # 000010000 -> 10000
-        instrument = clean_number(fields[5])      # 05921 -> 5921
-        quantity_str = fields[6].strip()          # 00000000027.0000000
-        counterparty_account = clean_number(fields[8])  # 000010018 -> 10018
-
-        # Regla especial para 7046 con cuenta 10000
-        if record_type == 'DE' and original_code == '7046' and account_number == '10000':
-            converted_code = '7046'
-        else:
-            converted_code = str(int(original_code))  # Eliminar ceros a la izquierda
-
-        # Procesar cantidad
+        account_number = clean_number(fields[4])
+        instrument = clean_number(fields[5])
+        quantity_str = fields[6].strip()
+        counterparty_account = clean_number(fields[8])
+        
         quantity = float(quantity_str.replace(',', '').lstrip('0') or '0')
 
-        # Determinar método de liquidación
+        # Siempre convertir el código numérico (ej. '0046' o '7046') eliminando ceros
+        converted_code = str(int(original_code))
+
         settlement_method = 'RTGS' if record_type == 'IE' else 'BATCH_SETTLEMENT'
 
-        # Aplicar reglas específicas para las cuentas según el tipo de registro
-        securities_account = f"7{converted_code}/{account_number}" if record_type == 'DE' else f"{converted_code}/{account_number}"
+        # Excepción: solo para securities_account, usar 77046 si se cumple esta condición
+        if record_type == 'DE' and original_code == '7046' and account_number == '10000':
+            securities_account = f"77046/10000"
+        else:
+            securities_account = f"7{converted_code}/{account_number}" if record_type == 'DE' else f"{converted_code}/{account_number}"
+        
         securities_account_counterparty = f"{converted_code}/{counterparty_account}"
 
-        # Construir línea de salida
         output_fields = [
-            converted_code,                          # InstructingParty
-            converted_code,                          # SettlementParty
-            securities_account,                      # SecuritiesAccount
-            instrument,                              # Instrument
-            'LOCAL_CODE',                            # InstrumentIdentifierType
-            'CVSA',                                   # CSDOfCounterparty
-            converted_code,                          # SettlementCounterparty
-            securities_account_counterparty,          # SecuritiesAccountOfCounterparty
-            generate_random_id(),                     # InstructionReference
-            'DELIVER',                                # Instrument(MovementOfSecurities)
-            str(quantity),                            # Quantity
-            '',                                       # QuantityType
-            'TRAD',                                   # TransactionType
-            settlement_method,                        # SettlementMethod
-            date_str,                                 # TradeDate
-            date_str,                                 # IntendedSettlementDate
-            'NOTHING'                                 # PaymentType
+            converted_code,
+            converted_code,
+            securities_account,
+            instrument,
+            'LOCAL_CODE',
+            'CVSA',
+            converted_code,
+            securities_account_counterparty,
+            generate_random_id(),
+            'DELIVER',
+            str(quantity),
+            '',
+            'TRAD',
+            settlement_method,
+            date_str,
+            date_str,
+            'NOTHING'
         ]
 
         return ';'.join(output_fields)
