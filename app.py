@@ -25,12 +25,12 @@ def process_line(line, date_str, counter):
         
         quantity = float(quantity_str.replace(',', '').lstrip('0') or '0')
 
-        # Siempre convertir el código numérico (ej. '0046' o '7046') eliminando ceros
-        converted_code = str(int(original_code))
+        # Siempre reducir el código numérico a dos dígitos (ej. '7046' -> '46')
+        converted_code = str(int(original_code))[-2:]
 
         settlement_method = 'RTGS' if record_type == 'IE' else 'BATCH_SETTLEMENT'
 
-        # Excepción: solo para securities_account, usar 77046 si se cumple esta condición
+        # Excepción SOLO para securities_account
         if record_type == 'DE' and original_code == '7046' and account_number == '10000':
             securities_account = f"77046/10000"
         else:
