@@ -22,7 +22,7 @@ def process_line(line, date_str, counter):
         
         # Obtener código del registro (fields[3] contiene 7847 o 0847)
         original_code = fields[3]
-        converted_code = original_code[-3:]  # Tomar últimos 3 dígitos
+        converted_code = str(int(original_code))  # Eliminar ceros a la izquierda
         
         # Extraer campos
         account_number = clean_number(fields[4])          # 000010000 -> 10000
@@ -38,27 +38,27 @@ def process_line(line, date_str, counter):
         
         # Aplicar reglas específicas para las cuentas según el tipo de registro
         securities_account = f"7{converted_code}/{account_number}" if record_type == 'DE' else f"{converted_code}/{account_number}"
-        securities_account_counterparty = f"7{converted_code}/{counterparty_account}" if record_type == 'IE' else f"{converted_code}/{counterparty_account}"
+        securities_account_counterparty = f"{converted_code}/{counterparty_account}"  # Sin "7", siempre
         
         # Construir línea de salida
         output_fields = [
             converted_code,                          # InstructingParty
             converted_code,                          # SettlementParty
             securities_account,                      # SecuritiesAccount
-            instrument,                              # Instrument
-            'LOCAL_CODE',                           # InstrumentIdentifierType
-            'CVSA',                                 # CSDOfCounterparty
-            converted_code,                          # SettlementCounterparty
-            securities_account_counterparty,         # SecuritiesAccountOfCounterparty
-            generate_random_id(),                    # InstructionReference (ahora completamente aleatorio)
-            'DELIVER',                              # Instrument(MovementOfSecurities)
-            f"{quantity:.1f}",                      # Quantity
-            '',                                     # QuantityType
-            'TRAD',                                 # TransactionType
-            settlement_method,                      # SettlementMethod
-            date_str,                              # TradeDate
-            date_str,                              # IntendedSettlementDate
-            'NOTHING'                              # PaymentType
+            instrument,                               # Instrument
+            'LOCAL_CODE',                             # InstrumentIdentifierType
+            'CVSA',                                   # CSDOfCounterparty
+            converted_code,                           # SettlementCounterparty
+            securities_account_counterparty,          # SecuritiesAccountOfCounterparty
+            generate_random_id(),                     # InstructionReference
+            'DELIVER',                                # Instrument(MovementOfSecurities)
+            str(quantity),                            # Quantity con todos los decimales
+            '',                                       # QuantityType
+            'TRAD',                                   # TransactionType
+            settlement_method,                        # SettlementMethod
+            date_str,                                 # TradeDate
+            date_str,                                 # IntendedSettlementDate
+            'NOTHING'                                 # PaymentType
         ]
         
         return ';'.join(output_fields)
@@ -72,21 +72,13 @@ def clean_number(value):
     cleaned = value.strip().lstrip('0')
     return cleaned if cleaned else '0'
 
-# FUNCIÓN CORREGIDA PARA EXTRAER LA FECHA DE MANERA FLEXIBLE
 def extract_date_from_header(content):
     for line in content.split('\n'):
         if line.startswith('00'):
-            # Extraer la parte donde debería estar la fecha (posición aproximada)
-            date_section = line[11:21].strip()  # Ampliamos un poco el rango y eliminamos espacios
-            
-            # Extraer solo los dígitos de esta sección
+            date_section = line[11:21].strip()
             date_digits = ''.join(c for c in date_section if c.isdigit())
-            
-            # Si tenemos al menos 7 dígitos (mínimo para una fecha válida)
             if len(date_digits) >= 7:
-                return date_digits[:8]  # Tomamos hasta 8 dígitos si están disponibles
-            
-    # Si no encontramos una fecha válida, usamos la fecha actual
+                return date_digits[:8]
     return datetime.now().strftime('%Y%m%d')
 
 def convert_file(content):
@@ -109,18 +101,16 @@ def convert_file(content):
 def main():
     st.title("Conversor de Archivos TSA a SI2")
     
-    uploaded_file = st.file_uploader("Selecciona el archivo TXT", type=['txt'])
+    uploaded_file = st.file_uploader("Seleccioná el archivo TXT", type=['txt'])
     
     if uploaded_file is not None:
         try:
             content = uploaded_file.getvalue().decode('utf-8')
             output_content = convert_file(content)
             
-            # Mostrar vista previa
             st.subheader("Vista previa del archivo convertido:")
             st.text_area("", output_content, height=300)
             
-            # Crear botón de descarga
             st.download_button(
                 label="Descargar archivo convertido",
                 data=output_content,
