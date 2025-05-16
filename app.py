@@ -36,7 +36,11 @@ def process_line(line, date_str, counter):
         else:
             securities_account = f"7{converted_code}/{account_number}" if record_type == 'DE' else f"{converted_code}/{account_number}"
         
-        securities_account_counterparty = f"{converted_code}/{counterparty_account}"
+        # Excepción SOLO para securities_account_counterparty
+        if record_type == 'IE' and converted_code == '46' and counterparty_account == '10000':
+            securities_account_counterparty = "7046/10000"
+        else:
+            securities_account_counterparty = f"{converted_code}/{counterparty_account}"
 
         output_fields = [
             converted_code,
