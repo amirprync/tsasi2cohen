@@ -25,14 +25,14 @@ def process_line(line, date_str, counter):
         
         quantity = float(quantity_str.replace(',', '').lstrip('0') or '0')
 
-        # Siempre reducir el código numérico a dos dígitos (ej. '7046' -> '46')
+        # Siempre reducir el código a los últimos dos dígitos
         converted_code = str(int(original_code))[-2:]
 
         settlement_method = 'RTGS' if record_type == 'IE' else 'BATCH_SETTLEMENT'
 
         # Excepción SOLO para securities_account
         if record_type == 'DE' and original_code == '7046' and account_number == '10000':
-            securities_account = f"77046/10000"
+            securities_account = f"7046/10000"
         else:
             securities_account = f"7{converted_code}/{account_number}" if record_type == 'DE' else f"{converted_code}/{account_number}"
         
